@@ -8,9 +8,8 @@ import sys
 _mmc = None
 
 # default location to search for micromanager
-# microManagerPath = 'C:\\Program Files\\Micro-Manager-1.4'
-microManagerPath = "C:\\Program Files\\Micro-Manager-2.0gamma"
-
+microManagerPath = 'C:\\Program Files\\Micro-Manager-2.0gamma'
+default_config = "D:\\survey_software\\acq4\\config\\Survey03_no_fluidics.cfg"
 
 class MMCWrapper:
     """Wraps MMCorePy to raise more helpfule exceptions
@@ -39,13 +38,14 @@ class MMCWrapper:
         return fn
 
 
-def getMMCorePy(path=None):
+def getMMCorePy(path=None, config = default_config):
     """Return a singleton MMCorePy instance that is shared by all devices for accessing micromanager.
     """
     global _mmc
     if _mmc is None:
         if path is None:
             path = microManagerPath
+        print("attempting to import pymmcore")
         try:
             import pymmcore
 
@@ -68,5 +68,8 @@ def getMMCorePy(path=None):
                     sys.path.pop()
 
             _mmc = MMCorePy.CMMCore()
+        # load the system configuration...
+        if config is not None:        
+            _mmc.loadSystemConfiguration(config)
 
     return _mmc
