@@ -1,15 +1,19 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
+import os, sys
+from acq4.util.Mutex import Mutex
+import atexit
+from pathlib import Path
 
-import os
-import sys
-
+from acq4 import CONFIGPATH
+from pyqtgraph import configfile
 # singleton MMCorePy instance
 _mmc = None
 
 # default location to search for micromanager
-microManagerPath = 'C:\\Program Files\\Micro-Manager-2.0gamma'
+DEFAULT_MM_PATH = 'C:\\Program Files\\Micro-Manager-2.0gamma'
 default_config = "D:\\survey_software\\acq4\\config\\Survey03_no_fluidics.cfg"
+
 
 class MMCWrapper:
     """Wraps MMCorePy to raise more helpfule exceptions
@@ -37,6 +41,33 @@ class MMCWrapper:
         self.__wrapper_cache[name] = fn
         return fn
 
+def getMMConfig():
+    """
+        get the micromanager path and desired micromanager config file from acq4 config 
+    """    
+    cfPath = Path(CONFIGPATH[0]).joinpath( 'default.cfg')
+    print(cfPath)
+    if cfPath.exists():
+        cfg = configfile.readConfigFile(str(cfPath))
+        print(cfg)
+        micromanager_dict = {'config_file' : 'config/'+cfg['micromanager_configfile'],
+                            'micromanager_dir' : cfg['micromanager_directory']}
+        return micromanager_dict
+    print("Could not find config file in: %s" % CONFIGPATH)
+
+
+#  slightly painful parsing of the config file here because
+# the manager may not exist yet?
+try:
+    micromanager_settings = getMMConfig()
+    path = (micromanager_settings['micromanager_dir'])
+except:
+    print("failed to get micromanager settings")
+    path = DEFAULT_MM_PATH
+    micromanager_settings = {"config_file":None}
+
+default_config = micromanager_settings["config_file"]
+
 
 def getMMCorePy(path=None, config = default_config):
     """Return a singleton MMCorePy instance that is shared by all devices for accessing micromanager.
@@ -44,7 +75,7 @@ def getMMCorePy(path=None, config = default_config):
     global _mmc
     if _mmc is None:
         if path is None:
-            path = microManagerPath
+            path = DEFAULT_MM_PATH
         print("attempting to import pymmcore")
         try:
             import pymmcore
@@ -73,3 +104,16 @@ def getMMCorePy(path=None, config = default_config):
             _mmc.loadSystemConfiguration(config)
 
     return _mmc
+
+def unloadMMCore():
+    print("attempting to unload Micro Manager Devices ... ")
+
+    if "_mmc" in globals().keys():
+        print("Unloading All Micro Manager Devices")
+        mmc = getMMCorePy()
+        return mmc.unloadAllDevices()
+    else:
+        print("Nothing left to unload")
+        return None
+        
+atexit.register(unloadMMCore)
