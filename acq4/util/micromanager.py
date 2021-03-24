@@ -11,7 +11,7 @@ from pyqtgraph import configfile
 _mmc = None
 
 # default location to search for micromanager
-DEFAULT_MM_PATH = 'C:\\Program Files\\Micro-Manager-2.0gamma'
+DEFAULT_MM_PATH = 'C:\\Program Files\\Micro-Manager-2.00gamma1'
 default_config = "D:\\survey_software\\acq4\\config\\Survey03_no_fluidics.cfg"
 
 
@@ -76,12 +76,18 @@ def getMMCorePy(path=None, config = default_config):
     if _mmc is None:
         if path is None:
             path = DEFAULT_MM_PATH
+
+        if not Path(path).exists():
+            
+            raise Exception("micromanager not found at "+DEFAULT_MM_PATH)
         print("attempting to import pymmcore")
         try:
             import pymmcore
 
             _mmc = MMCWrapper(pymmcore.CMMCore())
+
             _mmc.setDeviceAdapterSearchPaths([path])
+            print("imported pymmcore")
         except ImportError:
 
             try:
@@ -100,9 +106,12 @@ def getMMCorePy(path=None, config = default_config):
 
             _mmc = MMCorePy.CMMCore()
         # load the system configuration...
-        if config is not None:        
-            _mmc.loadSystemConfiguration(config)
-
+        if config is not None:      
+            print("loading config at "+config)
+            now = os.getcwd()
+            os.chdir(path)  
+            _mmc.loadSystemConfiguration(now+os.sep+config)
+            os.chdir(now)
     return _mmc
 
 def unloadMMCore():
